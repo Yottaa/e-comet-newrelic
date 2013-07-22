@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+
+	<bean id="postJob" class="com.yottaa.newrelic.PostJob" />
+
+	<bean id="postJobBean"
+		class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="postJob" />
+		<property name="targetMethod" value="postJobMethod" />
+	</bean>
+
+	<bean id="postJobTrigger" class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean">
+		<property name="jobDetail" ref="postJobBean" />
+		<property name="repeatInterval" value="60000" />
+		<property name="startDelay" value="3000" />
+	</bean>
+
+	<bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="jobDetails">
+			<list>
+				<ref bean="postJobBean" />
+			</list>
+		</property>
+		<property name="triggers">
+			<list>
+				<ref bean="postJobTrigger" />
+			</list>
+		</property>
+	</bean>
+
+</beans>
