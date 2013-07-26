@@ -1,11 +1,5 @@
 [
     {
-        "name" : "Http Metrics"
-    },
-    {
-        "name" : "Issue Metrics"
-    },
-    {
-        "name" : "Webpage Metrics"
+        "name" : "Yottaa Metrics"
     }
 ]

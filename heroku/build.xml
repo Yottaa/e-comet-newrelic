@@ -1,0 +1,35 @@
+<project name="yottaa.heroku.newrelic" default="update">
+
+    <property file="build.properties"/>
+
+    <property name="project.dir" value="."/>
+    <property name="server.dir" value="../server"/>
+
+    <property name="app.local.dir" value="${app.local.dir}"/>
+
+    <target name="update-server">
+        <copy todir="${app.local.dir}">
+            <fileset dir="${server.dir}">
+                <exclude name=".env"/>
+                <exclude name=".idea/**"/>
+                <exclude name=".gitignore"/>
+                <exclude name="*.log*"/>
+                <exclude name="*.iml"/>
+                <exclude name="target/**"/>
+                <exclude name="test*"/>
+                <exclude name="pom.xml"/>
+            </fileset>
+        </copy>
+        <copy todir="${app.local.dir}" file="${project.dir}/pom.xml"/>
+        <copy todir="${app.local.dir}" file="${project.dir}/Procfile"/>
+    </target>
+    <target name="update-java-client">
+        <mkdir dir="${app.local.dir}/repo"/>
+        <exec dir="${yottaa-java-client.local.dir}" executable="mvn">
+            <arg line="clean install -DskipTests=true deploy:deploy-file -Durl=file://${app.local.dir}/repo/ -Dfile=${yottaa-java-client.local.dir}/target/yottaa-java-client-1.0.0-SNAPSHOT.jar -DgroupId=com.yottaa.api -DartifactId=yottaa-java-client -Dpackaging=jar -Dversion=1.0.0-SNAPSHOT"/>
+        </exec>
+    </target>
+    <target name="update" depends="update-server,update-java-client">
+    </target>
+
+</project>

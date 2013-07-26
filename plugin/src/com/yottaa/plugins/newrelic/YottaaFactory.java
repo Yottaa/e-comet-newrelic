@@ -15,10 +15,6 @@ public class YottaaFactory extends AgentFactory {
     public Agent createConfiguredAgent(Map<String, Object> properties) {
         String name = (String) properties.get("name");
 
-        /*
-          int sawtoothMax = ((Long) properties.get("sawtoothMax")).intValue();
-          int squarewaveMax = ((Long) properties.get("squarewaveMax")).intValue();
-          */
         return new Yottaa(name);
     }
 }
