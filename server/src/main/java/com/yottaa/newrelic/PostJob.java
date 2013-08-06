@@ -1,5 +1,6 @@
 package com.yottaa.newrelic;
 
+import com.yottaa.api.YottaaHttpClientPartner;
 import com.yottaa.api.YottaaHttpClientPublic;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -50,23 +51,8 @@ public class PostJob {
         ResourceBundle bundle = ResourceBundle.getBundle("yottaa");
         YottaaHttpClientPublic yottaaHttpClientPublic = new YottaaHttpClientPublic(bundle.getString("yottaaAPIKey"));
 
-        JSONObject lastSampleMetrics = yottaaHttpClientPublic.getLastSample();
+        YottaaHttpClientPartner yottaaHttpClientPartner = new YottaaHttpClientPartner(false);
 
-        // Http Metrics
-        JSONObject httpMetrics = (JSONObject) lastSampleMetrics.get("http_metrics");
-        JSONObject httpMetricsFirstByte = (JSONObject) httpMetrics.get("first_byte");
-        JSONObject httpMetricsWait = (JSONObject) httpMetrics.get("wait");
-        JSONObject httpMetricsDNS = (JSONObject) httpMetrics.get("dns");
-        JSONObject httpMetricsConnect = (JSONObject) httpMetrics.get("connect");
-
-        // Issue Metrics
-        JSONObject issueMetrics = (JSONObject) lastSampleMetrics.get("issue_metrics");
-
-        //Webpage Metrics
-        JSONObject webpageMetrics = (JSONObject) lastSampleMetrics.get("webpage_metrics");
-        JSONObject webpageMetricsTimeToRender = (JSONObject) webpageMetrics.get("time_to_render");
-        JSONObject webpageMetricsTimeToDisplay = (JSONObject) webpageMetrics.get("time_to_display");
-        JSONObject webpageMetricsTimeToInteract = (JSONObject) webpageMetrics.get("time_to_interact");
 
         // Prepare JSON data that will be posted to New Relic
         JSONObject jsonData = new JSONObject();
@@ -80,34 +66,71 @@ public class PostJob {
 
         JSONArray components = new JSONArray();
 
-        // Http Metrics
-        JSONObject yottaaMetricsObj = new JSONObject();
-        yottaaMetricsObj.put("guid", "com.yottaa.Yottaa");
-        yottaaMetricsObj.put("duration", 60);
-        yottaaMetricsObj.put("name", "Yottaa Metrics");
+        JSONArray sites = yottaaHttpClientPartner.getAccountSites(bundle.getString("yottaaUserId"));
 
-        JSONObject yottaaMetricsData = new JSONObject();
-        yottaaMetricsData.put("Component/Http Metrics/Time To First Byte[sec]", Double.parseDouble(httpMetricsFirstByte.get("average").toString()));
-        yottaaMetricsData.put("Component/Http Metrics/Waiting Time[sec]", Double.parseDouble(httpMetricsWait.get("average").toString()));
-        yottaaMetricsData.put("Component/Http Metrics/DNS Time[sec]", Double.parseDouble(httpMetricsDNS.get("average").toString()));
-        yottaaMetricsData.put("Component/Http Metrics/Connection Time[sec]", Double.parseDouble(httpMetricsConnect.get("average").toString()));
+        logger.info("Total number of sites is " + sites.size() + ".");
 
-        yottaaMetricsData.put("Component/Issue Metrics/Critical Error Count[times]", Integer.parseInt(issueMetrics.get("critical_error_count").toString()));
-        yottaaMetricsData.put("Component/Issue Metrics/Error Count[times]", Integer.parseInt(issueMetrics.get("error_count").toString()));
-        yottaaMetricsData.put("Component/Issue Metrics/Info Count[times]", Integer.parseInt(issueMetrics.get("info_count").toString()));
-        yottaaMetricsData.put("Component/Issue Metrics/Warning Count[times]", Integer.parseInt(issueMetrics.get("warning_count").toString()));
+        for (int i = 0, len = sites.size(); i < len; i++) {
+            JSONObject siteObj = (JSONObject) sites.get(i);
+            String host = (String) siteObj.get("host");
 
-        yottaaMetricsData.put("Component/Webpage Metrics/Time To Render[sec]", Double.parseDouble(webpageMetricsTimeToRender.get("average").toString()));
-        yottaaMetricsData.put("Component/Webpage Metrics/Time To Display[sec]", Double.parseDouble(webpageMetricsTimeToDisplay.get("average").toString()));
-        yottaaMetricsData.put("Component/Webpage Metrics/Time To Interact[sec]", Double.parseDouble(webpageMetricsTimeToInteract.get("average").toString()));
+            logger.info("Retrieve last sample for host " + host + "(" + i + " of " + len + ").");
 
-        yottaaMetricsObj.put("metrics", yottaaMetricsData);
+            JSONObject lastSampleMetrics = yottaaHttpClientPublic.getLastSample(host);
 
-        components.add(yottaaMetricsObj);
+            JSONObject yottaaMetricsObj = new JSONObject();
+            yottaaMetricsObj.put("guid", "com.yottaa.Yottaa");
+            yottaaMetricsObj.put("duration", 60);
+            yottaaMetricsObj.put("name", host);
+
+            JSONObject yottaaMetricsData = new JSONObject();
+
+            // Http Metrics
+            if (lastSampleMetrics.get("http_metrics") != null) {
+                JSONObject httpMetrics = (JSONObject) lastSampleMetrics.get("http_metrics");
+
+                JSONObject httpMetricsFirstByte = (JSONObject) httpMetrics.get("first_byte");
+                JSONObject httpMetricsWait = (JSONObject) httpMetrics.get("wait");
+                JSONObject httpMetricsDNS = (JSONObject) httpMetrics.get("dns");
+                JSONObject httpMetricsConnect = (JSONObject) httpMetrics.get("connect");
+
+                yottaaMetricsData.put("Component/Http Metrics/Time To First Byte[sec]", Double.parseDouble(httpMetricsFirstByte.get("average").toString()));
+                yottaaMetricsData.put("Component/Http Metrics/Waiting Time[sec]", Double.parseDouble(httpMetricsWait.get("average").toString()));
+                yottaaMetricsData.put("Component/Http Metrics/DNS Time[sec]", Double.parseDouble(httpMetricsDNS.get("average").toString()));
+                yottaaMetricsData.put("Component/Http Metrics/Connection Time[sec]", Double.parseDouble(httpMetricsConnect.get("average").toString()));
+            }
+
+            // Issue Metrics
+            if (lastSampleMetrics.get("issue_metrics") != null) {
+                JSONObject issueMetrics = (JSONObject) lastSampleMetrics.get("issue_metrics");
+
+                yottaaMetricsData.put("Component/Issue Metrics/Critical Error Count[times]", Integer.parseInt(issueMetrics.get("critical_error_count").toString()));
+                yottaaMetricsData.put("Component/Issue Metrics/Error Count[times]", Integer.parseInt(issueMetrics.get("error_count").toString()));
+                yottaaMetricsData.put("Component/Issue Metrics/Info Count[times]", Integer.parseInt(issueMetrics.get("info_count").toString()));
+                yottaaMetricsData.put("Component/Issue Metrics/Warning Count[times]", Integer.parseInt(issueMetrics.get("warning_count").toString()));
+            }
+
+            //Webpage Metrics
+            if (lastSampleMetrics.get("webpage_metrics") != null) {
+                JSONObject webpageMetrics = (JSONObject) lastSampleMetrics.get("webpage_metrics");
+                JSONObject webpageMetricsTimeToRender = (JSONObject) webpageMetrics.get("time_to_render");
+                JSONObject webpageMetricsTimeToDisplay = (JSONObject) webpageMetrics.get("time_to_display");
+                JSONObject webpageMetricsTimeToInteract = (JSONObject) webpageMetrics.get("time_to_interact");
+
+                yottaaMetricsData.put("Component/Webpage Metrics/Time To Render[sec]", Double.parseDouble(webpageMetricsTimeToRender.get("average").toString()));
+                yottaaMetricsData.put("Component/Webpage Metrics/Time To Display[sec]", Double.parseDouble(webpageMetricsTimeToDisplay.get("average").toString()));
+                yottaaMetricsData.put("Component/Webpage Metrics/Time To Interact[sec]", Double.parseDouble(webpageMetricsTimeToInteract.get("average").toString()));
+            }
+            yottaaMetricsObj.put("metrics", yottaaMetricsData);
+
+            components.add(yottaaMetricsObj);
+
+            logger.info("Finished Retrieve last sample for host " + host + "(" + i + " of " + len + ").");
+        }
 
         jsonData.put("components", components);
 
-        logger.debug("Posted Yottaa Metrics :" + jsonData);
+        logger.info("Posted Yottaa Metrics :" + jsonData);
 
         this.newrelicPost(null, bundle.getString("newrelicLicenseKey"), jsonData);
 
@@ -155,15 +178,15 @@ public class PostJob {
                 responseObj = parser.parse(responseStr);
             }
         } catch (UnsupportedEncodingException e) {
-            logger.error("Failed to post Yottaa metrics to New Relic",e);
+            logger.error("Failed to post Yottaa metrics to New Relic", e);
         } catch (ClientProtocolException e) {
-            logger.error("Failed to post Yottaa metrics to New Relic",e);
+            logger.error("Failed to post Yottaa metrics to New Relic", e);
         } catch (IOException e) {
-            logger.error("Failed to post Yottaa metrics to New Relic",e);
+            logger.error("Failed to post Yottaa metrics to New Relic", e);
         } catch (URISyntaxException e) {
-            logger.error("Failed to post Yottaa metrics to New Relic",e);
+            logger.error("Failed to post Yottaa metrics to New Relic", e);
         } catch (ParseException e) {
-            logger.error("Failed to post Yottaa metrics to New Relic",e);
+            logger.error("Failed to post Yottaa metrics to New Relic", e);
         }
 
         return responseObj;
