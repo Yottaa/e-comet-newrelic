@@ -81,7 +81,8 @@ public class PostJob {
             JSONObject yottaaMetricsObj = new JSONObject();
             yottaaMetricsObj.put("guid", "com.yottaa.Yottaa");
             yottaaMetricsObj.put("duration", 60);
-            yottaaMetricsObj.put("name", host);
+            //yottaaMetricsObj.put("name", host);
+            yottaaMetricsObj.put("name", (String) lastSampleMetrics.get("name"));
 
             JSONObject yottaaMetricsData = new JSONObject();
 
